@@ -102,8 +102,3 @@ Dashboard ➡️ Always fresh 📊
 You ➡️ Motivated AF 🚀💪🔥
 
 Happy coding, green-square hero! 🦸‍♂️🦸‍♀️💚⚡🌈🎉
-
-```
-
-Would you like me to also add a **tiny “Gallery Preview” section** at the top of the README that links directly to your live Pages site (so ClickUp and teammates can click it fast)?
-```

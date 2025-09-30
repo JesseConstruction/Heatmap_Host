@@ -1,0 +1,152 @@
+# .github/workflows/heatmap_nightly.yml
+name: Build Heatmaps (Nightly)
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 03:00 UTC nightly
+  workflow_dispatch: {}    # still allow manual runs
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.mk.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: mk
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Repo list from file (preferred) or from variable HEATMAP_REPOS
+          if [ -f .heatmap-repos.txt ]; then
+            awk 'NF>0' .heatmap-repos.txt > /tmp/repos.txt
+          else
+            printf '%s\n' "${{ vars.HEATMAP_REPOS }}" | tr ',' '\n' \
+              | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | awk 'NF>0' > /tmp/repos.txt
+          fi
+
+          {
+            echo '{ "include": ['
+            first=1
+            while IFS= read -r r; do
+              [[ "$r" == */* ]] || { echo "Invalid repo: $r"; exit 1; }
+              (( first )) || echo ','
+              printf '  {"repo":"%s"}' "$r"
+              first=0
+            done < /tmp/repos.txt
+            echo '] }'
+          } > /tmp/matrix.json
+
+          echo "matrix<<JSON" >> "$GITHUB_OUTPUT"
+          cat /tmp/matrix.json >> "$GITHUB_OUTPUT"
+          echo "JSON" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Safe name from repo
+        id: names
+        shell: bash
+        run: |
+          SAFE=$(echo "${{ matrix.repo }}" | sed 's#/#-#g')
+          echo "SAFE_NAME=$SAFE" >> $GITHUB_ENV
+
+      - name: Checkout target repo (full history)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repo }}
+          path: target-repo
+          fetch-depth: 0
+          token: ${{ secrets.TARGET_REPO_TOKEN || github.token }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Generate SVG
+        env:
+          REPO_DIR: target-repo
+          AUTHOR_EMAIL:  ${{ vars.AUTHOR_EMAIL || '' }}   # blank = all
+          IGNORE_MERGES: ${{ vars.IGNORE_MERGES || '1' }}
+          LOOKBACK_DAYS: ${{ vars.LOOKBACK_DAYS || '365' }}
+          OUTPUT_SVG:    out/heatmap-${{ env.SAFE_NAME }}.svg
+        run: |
+          python scripts/fetch_commits_and_render.py
+          ls -l out || true
+
+      - name: Upload per-repo artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: svg-${{ env.SAFE_NAME }}
+          path: out/heatmap-${{ env.SAFE_NAME }}.svg
+          if-no-files-found: error
+
+  package:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all SVG artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: svg-*
+          path: public
+          merge-multiple: true
+
+      - name: Build gallery index.html
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
+          mkdir -p public
+          {
+            echo '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Repo Heatmaps</title>'
+            echo '<style>body{font-family:system-ui,Segoe UI,Arial;margin:24px}h1{margin:0 0 16px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:24px}.card{border:1px solid #e5e7eb;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.05)}.title{font-size:14px;color:#444;margin:0 0 8px;word-break:break-all}.link{font-size:12px;color:#2563eb;text-decoration:none}</style>'
+            echo '<h1>Repo Heatmaps</h1><div class="grid">'
+            for f in public/*.svg; do
+              [ -e "$f" ] || continue
+              name=$(basename "$f"); label="${name#heatmap-}"; label="${label%.svg}"
+              echo "<div class=\"card\"><p class=\"title\">$label</p>"
+              echo "<a class=\"link\" href=\"$BASE/$name\">$BASE/$name</a>"
+              echo "<div style=\"margin-top:8px\"><img src=\"$name\" alt=\"$label\" style=\"max-width:100%\"></div></div>"
+            done
+            echo '</div>'
+          } > public/index.html
+
+      - name: Upload artifact for GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: List URLs
+        shell: bash
+        run: |
+          BASE="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
+          echo "## Published URLs" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Home: ${BASE}/" >> "$GITHUB_STEP_SUMMARY"
+          for f in public/*.svg; do
+            echo "- ${BASE}/$(basename "$f")" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+  deploy:
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/deploy-pages@v4

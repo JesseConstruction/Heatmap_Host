@@ -38,30 +38,31 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Normalize commas/newlines to one-per-line
+
+          # Normalize commas/newlines -> one repo per line
           printf '%s\n' "${{ inputs.repos }}" \
-            | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
+            | tr ',' '\n' \
+            | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
             | awk 'NF>0' > /tmp/repos.txt
 
-          # Create: {"include":[{"repo":"owner/name"}, ...]}
-          echo '{
-            "include": [
-          ' > /tmp/matrix.json
+          # Validate and build JSON: {"include":[{"repo":"owner/name"}, ...]}
+          {
+            echo '{ "include": ['
+            first=true
+            while IFS= read -r r; do
+              [[ "$r" == */* ]] || { echo "Invalid repo '$r' (expected owner/name)" >&2; exit 1; }
+              $first || echo ','
+              printf '  {"repo":"%s"}' "$r"
+              first=false
+            done < /tmp/repos.txt
+            echo '] }'
+          } > /tmp/matrix.json
 
-          first=true
-          while IFS= read -r r; do
-            # basic validation: require a slash
-            if [[ "$r" != */* ]]; then
-              echo "Invalid repo '$r' (expected owner/name)" >&2
-              exit 1
-            fi
-            if [ "$first" = true ]; then first=false; else echo ',' >> /tmp/matrix.json; fi
-            printf '  {"repo":"%s"}' "$r" >> /tmp/matrix.json
-          done < /tmp/repos.txt
+          # 👉 Write multi-line output with heredoc
+          echo "matrix<<JSON" >> "$GITHUB_OUTPUT"
+          cat /tmp/matrix.json >> "$GITHUB_OUTPUT"
+          echo "JSON" >> "$GITHUB_OUTPUT"
 
-          echo ']}' >> /tmp/matrix.json
-
-          echo "matrix=$(cat /tmp/matrix.json)" >> "$GITHUB_OUTPUT"
 
   build:
     needs: prepare

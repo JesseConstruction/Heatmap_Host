@@ -1,53 +1,52 @@
-name: Build Heatmap (Matrix)
+name: Build Heatmap (Prompt each run)
 
 on:
-  schedule:
-    - cron: "0 3 * * *"
   workflow_dispatch:
     inputs:
+      target_repo:
+        description: "owner/name of the repo to visualize"
+        required: true
+        type: string
+      author_email:
+        description: "Filter commits by author email (optional)"
+        required: false
+        type: string
+      ignore_merges:
+        description: "Set to 1 to exclude merge commits (default 1)"
+        required: false
+        type: string
+        default: "1"
       lookback_days:
         description: "Days of history (default 365)"
         required: false
         type: string
+        default: "365"
 
 permissions:
   contents: write
   pages: write
   id-token: write
 
-env:
-  # Default if no input provided
-  LOOKBACK_DAYS: ${{ inputs.lookback_days || vars.LOOKBACK_DAYS || '365' }}
-  AUTHOR_EMAIL: ${{ vars.AUTHOR_EMAIL }}   # optional; applies to all unless overridden
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        repo:
-          - JesseConstruction/rsc_sop
-          # add more here:
-          # - JesseConstruction/another_repo
-          # - yourorg/something_else
-
     steps:
       - name: Checkout this repo (heatmap host)
         uses: actions/checkout@v4
 
-      - name: Derive file-safe name
+      - name: Make a file-safe name from input
         id: names
         shell: bash
         run: |
-          SAFE=$(echo "${{ matrix.repo }}" | sed 's#/#-#g')
+          SAFE=$(echo "${{ inputs.target_repo }}" | sed 's#/#-#g')
           echo "SAFE_NAME=$SAFE" >> $GITHUB_ENV
 
       - name: Checkout target repo
         uses: actions/checkout@v4
         with:
-          repository: ${{ matrix.repo }}
+          repository: ${{ inputs.target_repo }}
           path: target-repo
+          # Use your PAT if present; otherwise GITHUB_TOKEN (works for public repos)
           token: ${{ secrets.TARGET_REPO_TOKEN || github.token }}
 
       - name: Setup Python
@@ -58,9 +57,10 @@ jobs:
       - name: Generate SVG heatmap
         env:
           REPO_DIR: target-repo
-          AUTHOR_EMAIL: ${{ env.AUTHOR_EMAIL }}      # or leave blank to include all
-          IGNORE_MERGES: ${{ vars.IGNORE_MERGES || '1' }}
-          LOOKBACK_DAYS: ${{ env.LOOKBACK_DAYS }}
+          AUTHOR_EMAIL: ${{ inputs.author_email }}
+          IGNORE_MERGES: ${{ inputs.ignore_merges || '1' }}
+          LOOKBACK_DAYS: ${{ inputs.lookback_days || '365' }}
+          # One file per run, named after the chosen repo:
           OUTPUT_SVG: public/heatmap-${{ env.SAFE_NAME }}.svg
         run: |
           python scripts/fetch_commits_and_render.py

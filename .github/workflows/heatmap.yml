@@ -1,22 +1,10 @@
-name: Build Heatmap (Template)
+name: Build Heatmap (Matrix)
 
 on:
   schedule:
-    - cron: "0 3 * * *"   # nightly at 03:00 UTC
+    - cron: "0 3 * * *"
   workflow_dispatch:
     inputs:
-      target_repo:
-        description: "owner/name (overrides repo variable TARGET_REPO)"
-        required: false
-        type: string
-      author_email:
-        description: "Filter commits by author email (optional)"
-        required: false
-        type: string
-      ignore_merges:
-        description: "Set to 1 to exclude merge commits"
-        required: false
-        type: string
       lookback_days:
         description: "Days of history (default 365)"
         required: false
@@ -27,26 +15,39 @@ permissions:
   pages: write
   id-token: write
 
-# Prefer repo Variables/Secrets. Allow manual overrides via workflow_dispatch inputs.
 env:
-  TARGET_REPO: ${{ inputs.target_repo || vars.TARGET_REPO }}
-  AUTHOR_EMAIL: ${{ inputs.author_email || vars.AUTHOR_EMAIL }}
-  IGNORE_MERGES: ${{ inputs.ignore_merges || vars.IGNORE_MERGES }}
-  LOOKBACK_DAYS: ${{ inputs.lookback_days || vars.LOOKBACK_DAYS }}
+  # Default if no input provided
+  LOOKBACK_DAYS: ${{ inputs.lookback_days || vars.LOOKBACK_DAYS || '365' }}
+  AUTHOR_EMAIL: ${{ vars.AUTHOR_EMAIL }}   # optional; applies to all unless overridden
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        repo:
+          - JesseConstruction/rsc_sop
+          # add more here:
+          # - JesseConstruction/another_repo
+          # - yourorg/something_else
+
     steps:
       - name: Checkout this repo (heatmap host)
         uses: actions/checkout@v4
 
+      - name: Derive file-safe name
+        id: names
+        shell: bash
+        run: |
+          SAFE=$(echo "${{ matrix.repo }}" | sed 's#/#-#g')
+          echo "SAFE_NAME=$SAFE" >> $GITHUB_ENV
+
       - name: Checkout target repo
         uses: actions/checkout@v4
         with:
-          repository: ${{ env.TARGET_REPO }}
+          repository: ${{ matrix.repo }}
           path: target-repo
-          # If private or cross-org, provide a PAT in repo Secret TARGET_REPO_TOKEN:
           token: ${{ secrets.TARGET_REPO_TOKEN || github.token }}
 
       - name: Setup Python
@@ -57,12 +58,13 @@ jobs:
       - name: Generate SVG heatmap
         env:
           REPO_DIR: target-repo
-          AUTHOR_EMAIL: ${{ env.AUTHOR_EMAIL }}
-          IGNORE_MERGES: ${{ env.IGNORE_MERGES }}
+          AUTHOR_EMAIL: ${{ env.AUTHOR_EMAIL }}      # or leave blank to include all
+          IGNORE_MERGES: ${{ vars.IGNORE_MERGES || '1' }}
           LOOKBACK_DAYS: ${{ env.LOOKBACK_DAYS }}
-          OUTPUT_SVG: public/heatmap.svg
+          OUTPUT_SVG: public/heatmap-${{ env.SAFE_NAME }}.svg
         run: |
           python scripts/fetch_commits_and_render.py
+          echo "Wrote public/heatmap-${{ env.SAFE_NAME }}.svg"
 
       - name: Upload artifact for GitHub Pages
         uses: actions/upload-pages-artifact@v3

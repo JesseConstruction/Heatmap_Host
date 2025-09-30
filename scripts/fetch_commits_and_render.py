@@ -63,63 +63,57 @@ def render_svg(daily_counts, days,
                top_margin=20, left_margin=30,
                font_family="Inter,Segoe UI,Arial"):
     weeks = (len(days) + 6) // 7
-    width = left_margin + weeks * (cell_size + cell_gap)
-    height = top_margin + 7 * (cell_size + cell_gap)
+    width  = left_margin + weeks * (cell_size + cell_gap)
+    height = top_margin + 7 * (cell_size + cell_gap) + 36  # extra bottom padding
 
-    # month labels
+    svg = []
+    svg.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+               f'font-family="{font_family}" font-size="10">')
+    svg.append('<rect width="100%" height="100%" fill="white"/>')
+
+    # Month labels
     month_x = {}
     for idx, d in enumerate(days):
         if d.day == 1:
             week_idx = idx // 7
             x = left_margin + week_idx * (cell_size + cell_gap)
             month_x[d.strftime("%b")] = x
-
-    svg = []
-    svg.append(f'<svg xmlns="http://www.w3.org/2000/svg" '
-               f'width="{width}" height="{height}" '
-               f'font-family="{font_family}" font-size="10">')
-    svg.append('<rect width="100%" height="100%" fill="white"/>')
-
-    # month labels
     for label, x in month_x.items():
         svg.append(f'<text x="{x}" y="12" fill="#57606a">{label}</text>')
 
-    # day labels (Mon, Wed, Fri)
+    # Day labels (Mon, Wed, Fri)
     day_labels = {1: "Mon", 3: "Wed", 5: "Fri"}
     for di, text in day_labels.items():
         y = top_margin + di * (cell_size + cell_gap) + 9
         svg.append(f'<text x="0" y="{y}" fill="#57606a">{text}</text>')
 
-    # cells
+    # Cells
     for idx, day in enumerate(days):
-        week_idx = idx // 7
-        day_of_week = idx % 7
+        week_idx   = idx // 7
+        day_of_week= idx % 7
         x = left_margin + week_idx * (cell_size + cell_gap)
         y = top_margin + day_of_week * (cell_size + cell_gap)
         c = daily_counts.get(day, 0)
         fill = color_for_count(c)
         tooltip = f"{c} commits on {day.isoformat()}"
-        svg.append(f'<rect x="{x}" y="{y}" width="{cell_size}" '
-                   f'height="{cell_size}" rx="2" ry="2" fill="{fill}">')
+        svg.append(f'<rect x="{x}" y="{y}" width="{cell_size}" height="{cell_size}" rx="2" ry="2" fill="{fill}">')
         svg.append(f'  <title>{tooltip}</title>')
         svg.append('</rect>')
 
-    # legend
-    legend_x = width - 5 * (cell_size + cell_gap)
-    legend_y = height - (cell_size + 6) + 20  # push legend further down
+    # Centered legend below grid
+    legend_w = 5 * (cell_size + cell_gap) + 40  # boxes + 'Less'/'More' text space
+    legend_x = max(left_margin, (width - legend_w) // 2)
+    legend_y = height - 16  # 16px above bottom
     svg.append(f'<g transform="translate({legend_x},{legend_y})">')
-
-    svg.append('<text x="-42" y="10" fill="#57606a">Less</text>')
-    for i, c in enumerate([0, 1, 4, 7, 10]):
-        svg.append(f'<rect x="{i*(cell_size+cell_gap)}" y="0" '
-                   f'width="{cell_size}" height="{cell_size}" '
-                   f'rx="2" ry="2" fill="{color_for_count(c)}"/>')
-    svg.append(f'<text x="{5*(cell_size+cell_gap)+4}" '
-               f'y="10" fill="#57606a">More</text>')
+    svg.append('<text x="-36" y="10" fill="#57606a">Less</text>')
+    for i, c in enumerate([0,1,4,7,10]):
+        svg.append(f'<rect x="{i*(cell_size+cell_gap)}" y="0" width="{cell_size}" height="{cell_size}" rx="2" ry="2" fill="{color_for_count(c)}"/>')
+    svg.append(f'<text x="{5*(cell_size+cell_gap)+6}" y="10" fill="#57606a">More</text>')
     svg.append('</g>')
 
     svg.append('</svg>')
     return "\n".join(svg)
+
 
 def main():
     repo_dir = os.environ.get("REPO_DIR", "target-repo")

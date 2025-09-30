@@ -1,87 +1,109 @@
-# 🟩📊 Git Commit Heatmap → ClickUp Dashboard Embed 🚀✨🔥💻💡
 
-Welcome to your **personal GitHub-style contribution graph** 🖥️✨ → rendered as an **SVG heatmap** 🎨🟢 → published with **GitHub Pages** 🌐🌍 → embedded right into **ClickUp** 🗂️📊💪.  
 
-This repo is tiny but mighty 💥⚡: it takes commit history from **one repo of your choice** 🛠️🔧, generates a **green squares heatmap** 🟩🟩🟩, and makes it available at a stable URL 🔗🌈 for you to drop into a ClickUp **Custom Embed card** 🖼️📌🎯.
+# ⚡🟩🔥 Git Commit Heatmaps → ClickUp Dashboard 💻📊🚀🎉🌈✨
+
+Welcome, code warrior 🦸‍♂️🦸‍♀️!  
+This repo turns your **GitHub repos** 🐙📂 into dazzling **contribution heatmaps** 🎨🟩🟩🟩 — published with **GitHub Pages** 🌐🚀 — and embeddable straight into your **ClickUp dashboards** 🗂️📊💡.  
+No more boring dashboards… now you’ve got 💚**green power-ups**💚 every day you commit! ⚡🌟🔥
 
 ---
 
-## ⚡ How it Works 🤖🛠️📅
+## 🎬 How It Works 🎥🤖🛠️💡
 
-1. **GitHub Actions Workflow** 🤖⚙️  
-   - Runs nightly 🌙🌜 or on demand 🕹️▶️  
-   - Checks out your **target repo** 📂🗃️  
-   - Runs a Python script 🐍👨‍💻 to parse commit history (`git log`) 📜  
-   - Generates a **SVG calendar heatmap** 📅✨🎨  
-   - Publishes it via **GitHub Pages** 🌐🚀  
+1. **GitHub Actions Workflow** 🤖⚙️🎯  
+   - Runs **nightly** 🌙💤 *or* on-demand 🕹️▶️  
+   - Clones your **target repo(s)** 📂📂📂  
+   - Runs the **Python heatmap engine** 🐍🔥📜  
+   - Builds a **SVG calendar-style heatmap** 📅🎨💚  
+   - Publishes to **GitHub Pages** 🌍🚀✨  
 
-2. **Result** 🎯🥳  
-   - A beautiful URL like:  
-     👉 `https://<you>.github.io/<heatmap-repo>/heatmap.svg` 🌈  
-   - Embed this directly into ClickUp ✅📊💡  
+2. **Result** 🏆🎉🌈  
+   - Beautiful URLs like:  
+     👉 `https://<you>.github.io/<heatmap-host>/heatmap-<repo>.svg`  
+   - Paste straight into ClickUp ➕✅  
+   - Boom 💥 — live contribution graphs inside your dashboards! 📊💚🔥  
 
 ---
 
 ## 🛠️ Setup Steps 📝🔧🚦
 
-1. **Clone this repo** 💾⬇️  
+### 1️⃣ Clone this repo ⬇️💾
 ```bash
-git clone https://github.com/<you>/<heatmap-repo>.git
-cd <heatmap-repo>
+git clone https://github.com/<you>/<heatmap-host>.git
+cd <heatmap-host>
+````
+
+### 2️⃣ Add your repo list 📜📂
+
+In `.heatmap-repos.txt` write lines like:
+
+```
+owner1/repoA
+owner2/repoB
 ```
 
-2. **Configure workflow** 📝⚙️🔐  
-In `.github/workflows/heatmap.yml` set environment variables:  
-- `TARGET_REPO` → `"owner/name"` 🏷️  
-- `AUTHOR_EMAIL` → `"you@example.com"` (optional 📧)  
-- `IGNORE_MERGES` → `"1"` to hide merges 🙅‍♂️  
-- `LOOKBACK_DAYS` → `"365"` or any number 📅⏳  
+👉 You can also drop in settings:
 
-3. **Push changes** ⬆️📤🌟  
+* `AUTHOR_EMAIL=you@example.com` 📧
+* `IGNORE_MERGES=0` 🔀
+* `LOOKBACK_DAYS=730` ⏳
+
+### 3️⃣ Push changes ⬆️📤
+
 ```bash
 git add .
-git commit -m "Initial setup 🌱✨💻"
+git commit -m "✨🔥 setup heatmap workflow 🟩💻🚀"
 git push origin main
 ```
 
-4. **Enable GitHub Pages** 🌐🚀  
-- Repo → ⚙️ **Settings** → **Pages** → Source: **GitHub Actions** 🔄  
-- Run the workflow once manually ▶️💪  
+### 4️⃣ Enable Pages 🌐🚀
 
-5. **Embed in ClickUp** 🗂️📊🎉  
-- Go to **Dashboard** 📊📈 → Add **Custom Embed card** ➕  
-- Paste the `heatmap.svg` URL 🔗✨  
-- Enjoy your live contribution graph inside ClickUp 🎉🥳🔥  
+* Repo → ⚙️ Settings → Pages → Source = **GitHub Actions** 🛠️
+* Run the workflow once ▶️💡
 
----
+### 5️⃣ Embed in ClickUp 🖼️📊
 
-## 📦 Files in this repo 📂📝🛠️
-
-- `.github/workflows/heatmap.yml` 🤖⚡ → Automation pipeline  
-- `scripts/fetch_commits_and_render.py` 🐍📜 → SVG generator  
-- `public/heatmap.svg` 🟩✨ → Output file (published to Pages)  
-- `public/README.md` 📖📄 → Placeholder so folder exists  
+* Dashboard → ➕ Add **Custom Embed**
+* Paste your SVG URL 🔗🌈
+* Bask in the glory of your green squares 💚🟩💚
 
 ---
 
-## 🌈 Example Output 🟩🟩🟩
+## 📦 Repo Contents 📂🧰
 
-![example heatmap](https://github.githubassets.com/images/modules/profile/contributions/contributions.png)  
-*(Yours will look like this, but scoped to your repo 👌🚀)*
-
----
-
-## 💡 Notes & Tips 🧠📌💥
-
-- Private repo? 🔒🔑 → Use a **PAT** token as `TARGET_REPO_TOKEN` secret.  
-- Want multiple repos? 📂📂📂 → Duplicate workflow and output to `heatmap-repoA.svg`, `heatmap-repoB.svg`.  
-- Don’t like green? 🎨🌈 → Edit `color_for_count()` in the script to customize the palette.  
-- Need more history? ⏳⌛ → Increase `LOOKBACK_DAYS` to 730 (two years) or more.  
+* `.github/workflows/heatmap.yml` 🤖⚡ — workflow brain
+* `.github/workflows/heatmap_nightly.yml` ⏰🌙 — nightly auto-refresh
+* `scripts/fetch_commits_and_render.py` 🐍🎨 — SVG maker
+* `.heatmap-repos.txt` 📜🗂️ — repo list + config
+* `public/heatmap-*.svg` 🟩✨ — your heatmaps 🌈
 
 ---
 
-## 🎉 Done! 🥳🔥💻
+## 🌟 Example Output 🎨🟩
 
-Now every day you commit code 💻📜 → your ClickUp dashboard gets greener 🟩🟩🟩 → and you stay motivated 🚀🔥💪.  
+![example heatmap](https://github.githubassets.com/images/modules/profile/contributions/contributions.png)
+(Yours will be **repo-specific** 🔧⚡💚)
 
-Happy coding! ✨🐍⚡🟩🌟🎉
+---
+
+## 💡 Tips & Tricks 🧠🛠️
+
+* 🔒 Private repos? → Add a `TARGET_REPO_TOKEN` secret 🔑
+* 🎨 Don’t like green? Edit `color_for_count()` to pick your palette 🌈🖌️
+* ⏳ Want more history? Set `LOOKBACK_DAYS=1095` for 3 years 📜
+* 📊 Multiple repos? → They’ll all show up on the **gallery page** 🌐✨
+
+---
+
+## 🎉 That’s it! 🎊🔥💻
+
+Commit ➡️ Heatmap updates 🟩
+Dashboard ➡️ Always fresh 📊
+You ➡️ Motivated AF 🚀💪🔥
+
+Happy coding, green-square hero! 🦸‍♂️🦸‍♀️💚⚡🌈🎉
+
+```
+
+Would you like me to also add a **tiny “Gallery Preview” section** at the top of the README that links directly to your live Pages site (so ClickUp and teammates can click it fast)?
+```

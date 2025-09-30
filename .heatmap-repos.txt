@@ -5,5 +5,3 @@ JesseConstruction/rsc_sop
 JesseConstruction/Make_Images_Square
 JesseConstruction/job_probability_matrix
 JesseConstruction/ServiceTitanCatalogUpdater
-IGNORE_MERGES=0
-LOOKBACK_DAYS=91

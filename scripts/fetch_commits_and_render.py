@@ -106,8 +106,9 @@ def render_svg(daily_counts, days,
 
     # legend
     legend_x = width - 5 * (cell_size + cell_gap)
-    legend_y = height - (cell_size + 6)
+    legend_y = height - (cell_size + 6) + 20  # push legend further down
     svg.append(f'<g transform="translate({legend_x},{legend_y})">')
+
     svg.append('<text x="-42" y="10" fill="#57606a">Less</text>')
     for i, c in enumerate([0, 1, 4, 7, 10]):
         svg.append(f'<rect x="{i*(cell_size+cell_gap)}" y="0" '

@@ -1,14 +1,14 @@
-name: Build Heatmaps (Dynamic Prompt)
+name: Build Heatmaps (Dynamic Prompt, Fan-in)
 
 on:
   workflow_dispatch:
     inputs:
       repos:
-        description: "Repo list (owner/name). One per line or comma-separated."
+        description: "Repos (owner/name). Comma or newline separated."
         required: true
         type: string
       author_email:
-        description: "Filter by author email (optional; blank = all)"
+        description: "Filter by author email (blank = all)"
         required: false
         type: string
       ignore_merges:
@@ -38,19 +38,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
-          # Normalize commas/newlines -> one repo per line
-          printf '%s\n' "${{ inputs.repos }}" \
-            | tr ',' '\n' \
+          printf '%s\n' "${{ inputs.repos }}" | tr ',' '\n' \
             | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
             | awk 'NF>0' > /tmp/repos.txt
 
-          # Validate and build JSON: {"include":[{"repo":"owner/name"}, ...]}
           {
             echo '{ "include": ['
             first=true
             while IFS= read -r r; do
-              [[ "$r" == */* ]] || { echo "Invalid repo '$r' (expected owner/name)" >&2; exit 1; }
+              [[ "$r" == */* ]] || { echo "Invalid repo '$r' (owner/name)"; exit 1; }
               $first || echo ','
               printf '  {"repo":"%s"}' "$r"
               first=false
@@ -58,11 +54,9 @@ jobs:
             echo '] }'
           } > /tmp/matrix.json
 
-          # 👉 Write multi-line output with heredoc
           echo "matrix<<JSON" >> "$GITHUB_OUTPUT"
           cat /tmp/matrix.json >> "$GITHUB_OUTPUT"
           echo "JSON" >> "$GITHUB_OUTPUT"
-
 
   build:
     needs: prepare
@@ -71,10 +65,9 @@ jobs:
       matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
 
     steps:
-      - name: Checkout this repo (heatmap host)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Derive file-safe name from repo
+      - name: Safe name from repo
         id: names
         shell: bash
         run: |
@@ -89,21 +82,42 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.TARGET_REPO_TOKEN || github.token }}
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Generate SVG heatmap
+      - name: Generate SVG
         env:
           REPO_DIR: target-repo
-          AUTHOR_EMAIL: ${{ inputs.author_email }}
+          AUTHOR_EMAIL:  ${{ inputs.author_email }}
           IGNORE_MERGES: ${{ inputs.ignore_merges || '1' }}
           LOOKBACK_DAYS: ${{ inputs.lookback_days || '365' }}
-          OUTPUT_SVG: public/heatmap-${{ env.SAFE_NAME }}.svg
+          OUTPUT_SVG:    out/heatmap-${{ env.SAFE_NAME }}.svg
         run: |
           python scripts/fetch_commits_and_render.py
-          echo "Wrote public/heatmap-${{ env.SAFE_NAME }}.svg"
+          ls -l out || true
+
+      # Upload a UNIQUE artifact for this leg (note: NOT the Pages artifact)
+      - name: Upload per-repo artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: svg-${{ env.SAFE_NAME }}
+          path: out/heatmap-${{ env.SAFE_NAME }}.svg
+          if-no-files-found: error
+
+  package:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Download all svg-* artifacts into public/
+      - name: Download all SVG artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: svg-*
+          path: public
+          merge-multiple: true
 
       - name: Build gallery index.html
         shell: bash
@@ -124,13 +138,15 @@ jobs:
             done
             echo '</div>'
           } > public/index.html
+          ls -l public
 
+      # ONE Pages artifact for the whole site
       - name: Upload artifact for GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: public
 
-      - name: List URLs in job summary
+      - name: List URLs
         shell: bash
         run: |
           BASE="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
@@ -141,8 +157,7 @@ jobs:
           done
 
   deploy:
-    needs: build
+    needs: package
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
+      - uses: actions/deploy-pages@v4

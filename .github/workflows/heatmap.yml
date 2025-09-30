@@ -1,0 +1,77 @@
+name: Build Heatmap (Template)
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # nightly at 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: "owner/name (overrides repo variable TARGET_REPO)"
+        required: false
+        type: string
+      author_email:
+        description: "Filter commits by author email (optional)"
+        required: false
+        type: string
+      ignore_merges:
+        description: "Set to 1 to exclude merge commits"
+        required: false
+        type: string
+      lookback_days:
+        description: "Days of history (default 365)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Prefer repo Variables/Secrets. Allow manual overrides via workflow_dispatch inputs.
+env:
+  TARGET_REPO: ${{ inputs.target_repo || vars.TARGET_REPO }}
+  AUTHOR_EMAIL: ${{ inputs.author_email || vars.AUTHOR_EMAIL }}
+  IGNORE_MERGES: ${{ inputs.ignore_merges || vars.IGNORE_MERGES }}
+  LOOKBACK_DAYS: ${{ inputs.lookback_days || vars.LOOKBACK_DAYS }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo (heatmap host)
+        uses: actions/checkout@v4
+
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TARGET_REPO }}
+          path: target-repo
+          # If private or cross-org, provide a PAT in repo Secret TARGET_REPO_TOKEN:
+          token: ${{ secrets.TARGET_REPO_TOKEN || github.token }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Generate SVG heatmap
+        env:
+          REPO_DIR: target-repo
+          AUTHOR_EMAIL: ${{ env.AUTHOR_EMAIL }}
+          IGNORE_MERGES: ${{ env.IGNORE_MERGES }}
+          LOOKBACK_DAYS: ${{ env.LOOKBACK_DAYS }}
+          OUTPUT_SVG: public/heatmap.svg
+        run: |
+          python scripts/fetch_commits_and_render.py
+
+      - name: Upload artifact for GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4

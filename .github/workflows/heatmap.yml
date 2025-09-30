@@ -1,18 +1,18 @@
-name: Build Heatmap (Prompt each run)
+name: Build Heatmaps (Dynamic Prompt)
 
 on:
   workflow_dispatch:
     inputs:
-      target_repo:
-        description: "owner/name of the repo to visualize"
+      repos:
+        description: "Repo list (owner/name). One per line or comma-separated."
         required: true
         type: string
       author_email:
-        description: "Filter commits by author email (optional)"
+        description: "Filter by author email (optional; blank = all)"
         required: false
         type: string
       ignore_merges:
-        description: "Set to 1 to exclude merge commits (default 1)"
+        description: "1 = exclude merges (default 1)"
         required: false
         type: string
         default: "1"
@@ -28,25 +28,64 @@ permissions:
   id-token: write
 
 jobs:
-  build:
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.mk.outputs.matrix }}
+    steps:
+      - name: Build matrix JSON from input
+        id: mk
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Normalize commas/newlines to one-per-line
+          printf '%s\n' "${{ inputs.repos }}" \
+            | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
+            | awk 'NF>0' > /tmp/repos.txt
+
+          # Create: {"include":[{"repo":"owner/name"}, ...]}
+          echo '{
+            "include": [
+          ' > /tmp/matrix.json
+
+          first=true
+          while IFS= read -r r; do
+            # basic validation: require a slash
+            if [[ "$r" != */* ]]; then
+              echo "Invalid repo '$r' (expected owner/name)" >&2
+              exit 1
+            fi
+            if [ "$first" = true ]; then first=false; else echo ',' >> /tmp/matrix.json; fi
+            printf '  {"repo":"%s"}' "$r" >> /tmp/matrix.json
+          done < /tmp/repos.txt
+
+          echo ']}' >> /tmp/matrix.json
+
+          echo "matrix=$(cat /tmp/matrix.json)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+
     steps:
       - name: Checkout this repo (heatmap host)
         uses: actions/checkout@v4
 
-      - name: Make a file-safe name from input
+      - name: Derive file-safe name from repo
         id: names
         shell: bash
         run: |
-          SAFE=$(echo "${{ inputs.target_repo }}" | sed 's#/#-#g')
+          SAFE=$(echo "${{ matrix.repo }}" | sed 's#/#-#g')
           echo "SAFE_NAME=$SAFE" >> $GITHUB_ENV
 
-      - name: Checkout target repo
+      - name: Checkout target repo (full history)
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.target_repo }}
+          repository: ${{ matrix.repo }}
           path: target-repo
-          # Use your PAT if present; otherwise GITHUB_TOKEN (works for public repos)
+          fetch-depth: 0
           token: ${{ secrets.TARGET_REPO_TOKEN || github.token }}
 
       - name: Setup Python
@@ -60,7 +99,6 @@ jobs:
           AUTHOR_EMAIL: ${{ inputs.author_email }}
           IGNORE_MERGES: ${{ inputs.ignore_merges || '1' }}
           LOOKBACK_DAYS: ${{ inputs.lookback_days || '365' }}
-          # One file per run, named after the chosen repo:
           OUTPUT_SVG: public/heatmap-${{ env.SAFE_NAME }}.svg
         run: |
           python scripts/fetch_commits_and_render.py
@@ -73,33 +111,25 @@ jobs:
           BASE="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
           mkdir -p public
           {
-            echo '<!doctype html><html lang="en"><head><meta charset="utf-8">'
-            echo '<meta name="viewport" content="width=device-width, initial-scale=1">'
-            echo '<title>Heatmaps</title>'
-            echo '<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px}'
-            echo '.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:24px}'
-            echo '.card{border:1px solid #e5e7eb;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.05)}'
-            echo '.title{font-size:14px;color:#444;margin:0 0 8px 0;word-break:break-all}'
-            echo '.link{font-size:12px;color:#2563eb;text-decoration:none}'
-            echo '</style></head><body>'
-            echo '<h1>Repo Heatmaps</h1>'
-            echo '<div class="grid">'
+            echo '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Repo Heatmaps</title>'
+            echo '<style>body{font-family:system-ui,Segoe UI,Arial;margin:24px}h1{margin:0 0 16px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:24px}.card{border:1px solid #e5e7eb;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.05)}.title{font-size:14px;color:#444;margin:0 0 8px;word-break:break-all}.link{font-size:12px;color:#2563eb;text-decoration:none}</style>'
+            echo '<h1>Repo Heatmaps</h1><div class="grid">'
             for f in public/*.svg; do
               [ -e "$f" ] || continue
-              name=$(basename "$f")
-              # derive repo label from filename pattern heatmap-<owner>-<repo>.svg if present
-              label="${name#heatmap-}"; label="${label%.svg}"
-              echo '<div class="card">'
-              echo "  <p class=\"title\">$label</p>"
-              echo "  <a class=\"link\" href=\"$BASE/$name\">$BASE/$name</a>"
-              echo "  <div style=\"margin-top:8px\"><img src=\"$name\" alt=\"$label\" style=\"max-width:100%;height:auto\" /></div>"
-              echo '</div>'
+              name=$(basename "$f"); label="${name#heatmap-}"; label="${label%.svg}"
+              echo "<div class=\"card\"><p class=\"title\">$label</p>"
+              echo "<a class=\"link\" href=\"$BASE/$name\">$BASE/$name</a>"
+              echo "<div style=\"margin-top:8px\"><img src=\"$name\" alt=\"$label\" style=\"max-width:100%\"></div></div>"
             done
             echo '</div>'
-            echo '</body></html>'
           } > public/index.html
 
-      - name: Show published URLs
+      - name: Upload artifact for GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: List URLs in job summary
         shell: bash
         run: |
           BASE="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
@@ -108,12 +138,6 @@ jobs:
           for f in public/*.svg; do
             echo "- ${BASE}/$(basename "$f")" >> "$GITHUB_STEP_SUMMARY"
           done
-
-
-      - name: Upload artifact for GitHub Pages
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: public
 
   deploy:
     needs: build

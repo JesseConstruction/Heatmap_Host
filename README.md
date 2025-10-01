@@ -103,7 +103,6 @@ You ➡️ Motivated AF 🚀💪🔥
 
 Happy coding, green-square hero! 🦸‍♂️🦸‍♀️💚⚡🌈🎉
 
-````markdown
 ## 🍬🍭 Bubblegum Bonus: “How to Use This for **Your** Shizz” 💖🦄✨
 
 Wanna spin up your **own** sparkle-tastic heatmaps? YAAAS 💅💚  
@@ -115,7 +114,7 @@ Here’s how *anyone* can copy this hotness and make it theirs (fork-safe, zero 
   ```bash
   git clone https://github.com/<you>/<fork-name>.git
   cd <fork-name>
-````
+  ```
 
 ### 2) 🔐 Add your *own* token (for private repos)
 

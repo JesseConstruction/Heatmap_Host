@@ -4,51 +4,66 @@ Get up and running with the CLI HID input system in 10 minutes.
 
 ## Choose Your Hardware
 
-### Option 1: ESP32 (Recommended)
+### Option 1: Arduino Portenta H7 (Recommended - Tested)
 
 **Pros:**
-- Simple setup
-- Cheap (~$8)
+- Professional-grade hardware
+- Powerful dual-core processor
+- Built-in WiFi (2.4GHz + 5GHz)
+- Native USB HID support
+- Runs Mbed OS (RTOS)
+- Arduino ecosystem
+
+**Cons:**
+- Higher cost (~$100)
+- Overkill for simple use case
+
+### Option 2: ESP32 (Budget Option - Untested Draft)
+
+**Pros:**
+- Very cheap (~$8)
 - All-in-one WiFi + USB HID
+- Low power consumption
 
 **Cons:**
 - Need to buy hardware
+- **Firmware untested**
 
-### Option 2: Flipper Zero
+### Option 3: Flipper Zero (Manual Mode Only)
 
 **Pros:**
 - Cool factor
 - Multi-purpose device
 
 **Cons:**
-- More expensive
-- Requires WiFi Dev Board
+- Most expensive (~$199)
+- Requires WiFi Dev Board (+$30)
 - More complex setup
-- **Not currently fully implemented** (use ESP32 instead)
+- **Not fully implemented** (manual Bad USB only)
 
-## Setup: ESP32 (Recommended Path)
+## Setup: Portenta H7 (Recommended Path)
 
 ### 1. Hardware
 
-Buy an **ESP32-S2** or **ESP32-S3** development board:
-- Must have native USB support (S2 or S3, not original ESP32)
-- ~$8 on AliExpress, Amazon, etc.
-- Example: "ESP32-S3 DevKit"
+You'll need:
+- **Arduino Portenta H7** (any variant)
+- USB-C cable (must support data transfer)
+- WiFi network (2.4GHz or 5GHz)
 
 ### 2. Install Arduino IDE
 
 1. Download: https://www.arduino.cc/en/software
 2. Install on your computer
 
-### 3. Setup Arduino for ESP32
+### 3. Setup Arduino for Portenta H7
 
 1. File → Preferences
 2. Additional Board Manager URLs:
    ```
-   https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+   https://downloads.arduino.cc/packages/package_mbed_index.json
    ```
 3. Tools → Board → Boards Manager
-4. Search "esp32" and install
+4. Search "portenta" and install "Arduino Mbed OS Portenta Boards"
 
 ### 4. Install Libraries
 
@@ -56,26 +71,27 @@ Tools → Manage Libraries, install:
 - PubSubClient
 - ArduinoJson
 
+(USB HID libraries are included with Portenta board package)
+
 ### 5. Configure Firmware
 
-Edit `firmware/esp32/esp32_hid_keyboard/config.h`:
+Edit `firmware/portenta/portenta_h7_hid_keyboard/config.h`:
 
 ```cpp
 #define WIFI_SSID "YourWiFiName"
 #define WIFI_PASSWORD "YourWiFiPassword"
 #define MQTT_BROKER "broker.hivemq.com"  // Or your own
-#define DEVICE_ID "my-device"
+#define DEVICE_ID "portenta-default"
 ```
 
 ### 6. Upload Firmware
 
-1. Connect ESP32 via USB to your computer
-2. Open `firmware/esp32/esp32_hid_keyboard/esp32_hid_keyboard.ino`
-3. Tools → Board → ESP32S3 Dev Module
-4. Tools → USB Mode → "USB-OTG (TinyUSB)"
-5. Tools → Port → Select ESP32 port
-6. Click Upload button
-7. Wait for "Done uploading"
+1. Connect Portenta H7 via USB to your computer
+2. Open `firmware/portenta/portenta_h7_hid_keyboard/portenta_h7_hid_keyboard.ino`
+3. Tools → Board → Arduino Mbed OS Portenta Boards → Arduino Portenta H7 (M7 core)
+4. Tools → Port → Select Portenta port
+5. Click Upload button
+6. Wait for "Done uploading"
 
 ### 7. Setup CLI
 
@@ -89,9 +105,9 @@ Edit `.env` if needed (default works with public broker).
 
 ### 8. Test!
 
-**Connect ESP32 to target computer:**
-- Unplug ESP32 from your computer
-- Plug into the offline/target computer
+**Connect Portenta H7 to target computer:**
+- Unplug Portenta from your computer
+- Plug into the offline/target computer via USB-C
 - It should be recognized as a keyboard
 
 **From CLI computer (with internet):**
@@ -110,35 +126,42 @@ npm start -- combo "CTRL+ALT+DELETE"
 npm start -- status
 ```
 
+**Monitor on Portenta:**
+- Open Serial Monitor (115200 baud) while connected to your computer
+- Should see WiFi connection, MQTT connection, and command execution logs
+
 ## Troubleshooting
 
-### ESP32 not detected as keyboard
+### Portenta not detected as keyboard
 
-- Make sure you have ESP32-S2 or S3 (not original ESP32)
-- Check USB Mode is "USB-OTG (TinyUSB)"
-- Try different USB cable
-- Check serial monitor (115200 baud) for errors
+- Ensure firmware was uploaded to **M7 core** (not M4)
+- Check USB-C cable supports data transfer (not power-only)
+- Try double-pressing reset button to enter bootloader
+- Check Device Manager / System Info for USB HID device
 
 ### WiFi not connecting
 
 - Check SSID/password in config.h
-- ESP32 only supports 2.4GHz WiFi
+- Portenta supports both 2.4GHz and 5GHz WiFi
 - Check serial monitor for connection status
+- Move closer to router for testing
 
 ### MQTT not working
 
-- Public brokers can be unreliable
+- Public brokers can be unreliable and rate-limited
 - Consider running your own:
   ```bash
   docker run -d -p 1883:1883 eclipse-mosquitto
   ```
 - Update `MQTT_BROKER` in config.h to your broker IP
+- Check firewall isn't blocking port 1883
 
 ### Commands not executing
 
 - Check device ID matches in config.h and .env
-- Monitor serial output on ESP32
-- Ensure ESP32 is connected to both WiFi and target computer
+- Monitor serial output on Portenta (115200 baud)
+- Ensure Portenta is connected to both WiFi and target computer
+- Verify MQTT broker is accessible from Portenta's network
 
 ## Next Steps
 

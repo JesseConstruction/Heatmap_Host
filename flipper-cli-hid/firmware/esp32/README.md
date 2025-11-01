@@ -1,5 +1,9 @@
 # ESP32 USB HID Firmware
 
+⚠️ **UNTESTED DRAFT** - This firmware has not been tested on hardware yet. Use at your own risk.
+
+**Recommendation:** Use the Portenta H7 firmware instead (see `../portenta/`).
+
 This firmware turns an ESP32-S2/S3 into a WiFi-enabled USB HID keyboard.
 
 ## Hardware Requirements

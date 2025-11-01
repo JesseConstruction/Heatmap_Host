@@ -1,15 +1,20 @@
-# Flipper Zero / ESP32 CLI Input Device
+# Arduino Portenta H7 / ESP32 / Flipper Zero CLI Input Device
 
 Send keyboard input from a CLI interface over the internet to an offline computer using low-power devices.
 
 ## Architecture
 
-### Option 1: ESP32 USB HID (Recommended for simplicity)
+### Option 1: Arduino Portenta H7 (Recommended - Tested)
+```
+[CLI] → [MQTT Broker] → [Portenta H7 + WiFi] → [USB HID] → [Offline Computer]
+```
+
+### Option 2: ESP32 USB HID (Untested Draft)
 ```
 [CLI] → [MQTT Broker] → [ESP32 + WiFi] → [USB HID] → [Offline Computer]
 ```
 
-### Option 2: Flipper Zero + WiFi Dev Board
+### Option 3: Flipper Zero + WiFi Dev Board (Manual Mode Only)
 ```
 [CLI] → [MQTT Broker] → [Flipper WiFi Board] → [Flipper Zero] → [USB HID] → [Offline Computer]
 ```
@@ -37,8 +42,9 @@ cp .env.example .env
 ```
 
 ### 3. Flash Firmware
-- **ESP32**: Use Arduino IDE or PlatformIO (see `firmware/esp32/README.md`)
-- **Flipper Zero**: Copy script to Flipper (see `firmware/flipper/README.md`)
+- **Portenta H7**: Use Arduino IDE (see `firmware/portenta/README.md`)
+- **ESP32**: Use Arduino IDE (see `firmware/esp32/README.md`) - UNTESTED DRAFT
+- **Flipper Zero**: Copy script to Flipper (see `firmware/flipper/README.md`) - Manual only
 
 ### 4. Run CLI
 ```bash
@@ -47,14 +53,19 @@ npm start -- type "Hello from the internet!"
 
 ## Hardware Requirements
 
-### Option 1: ESP32 (Recommended)
-- ESP32 Dev Board with USB (~$8)
-- USB-A cable
+### Option 1: Arduino Portenta H7 (Recommended - Tested)
+- Arduino Portenta H7 (~$100)
+- USB-C cable
+- WiFi network (built-in)
+
+### Option 2: ESP32 (Untested Draft)
+- ESP32-S2/S3 Dev Board with USB (~$8)
+- USB cable
 - WiFi network
 
-### Option 2: Flipper Zero
-- Flipper Zero
-- WiFi Dev Board for Flipper
+### Option 3: Flipper Zero (Manual Mode Only)
+- Flipper Zero (~$169)
+- WiFi Dev Board for Flipper (~$30)
 - USB-C cable
 
 ## Project Structure
@@ -63,8 +74,9 @@ npm start -- type "Hello from the internet!"
 flipper-cli-hid/
 ├── cli/                    # Node.js CLI interface
 ├── firmware/
-│   ├── esp32/             # ESP32 Arduino firmware
-│   └── flipper/           # Flipper Zero Bad USB scripts
+│   ├── portenta/          # Arduino Portenta H7 firmware (tested)
+│   ├── esp32/             # ESP32 Arduino firmware (untested draft)
+│   └── flipper/           # Flipper Zero Bad USB scripts (manual)
 └── docs/                  # Documentation
 ```
 

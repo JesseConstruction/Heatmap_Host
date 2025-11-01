@@ -1,0 +1,26 @@
+REM Demo Bad USB Script for Flipper Zero
+REM Opens notepad and types a message
+REM
+REM To use:
+REM 1. Copy this file to SD Card/badusb/ on Flipper
+REM 2. Apps -> Bad USB -> demo_hello.txt
+REM 3. Connect to target computer
+REM 4. Press OK to execute
+
+DELAY 1000
+REM Open Run dialog (Windows)
+GUI r
+DELAY 500
+
+REM Open Notepad
+STRING notepad
+ENTER
+DELAY 1000
+
+REM Type message
+STRING Hello from Flipper Zero!
+ENTER
+STRING This Bad USB script was executed manually.
+ENTER
+ENTER
+STRING For remote execution, use the ESP32 firmware instead.

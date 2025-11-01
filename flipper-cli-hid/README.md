@@ -80,9 +80,77 @@ flipper-cli-hid/
 └── docs/                  # Documentation
 ```
 
+## Getting Started - First Time Setup
+
+### For Portenta H7 Users (Recommended)
+
+1. **Install Arduino IDE**
+   - Download from https://www.arduino.cc/en/software
+   - Install Portenta board support (see `firmware/portenta/README.md`)
+
+2. **Configure Your Device**
+   - Open `firmware/portenta/portenta_h7_hid_keyboard/portenta_h7_hid_keyboard.ino`
+   - Edit `config.h` with your WiFi credentials:
+     ```cpp
+     #define WIFI_SSID "YourWiFiName"
+     #define WIFI_PASSWORD "YourPassword"
+     #define DEVICE_ID "portenta-default"
+     ```
+
+3. **Upload Firmware**
+   - Connect Portenta H7 via USB
+   - Select Board: Arduino Portenta H7 (M7 core)
+   - Click Upload
+
+4. **Install CLI**
+   ```bash
+   cd cli
+   npm install
+   cp .env.example .env
+   ```
+
+5. **Test It**
+   - Connect Portenta to target computer via USB-C
+   - From CLI computer:
+     ```bash
+     npm start -- type "Hello from the internet!"
+     npm start -- status
+     ```
+
+**Full Guide:** See [docs/QUICKSTART.md](docs/QUICKSTART.md) for detailed instructions.
+
+## Next Steps After Setup
+
+1. **Test on Your Portenta H7**
+   - Verify WiFi connection in Serial Monitor (115200 baud)
+   - Check MQTT connection status
+   - Test basic commands (type, key, combo)
+
+2. **Production Configuration**
+   - Set up your own MQTT broker (see docs)
+   - Configure SSL/TLS for security
+   - Change default device IDs
+   - Implement authentication
+
+3. **Future Development**
+   - **UID Code Transmission**: Create new branch for RFID/NFC features
+   - **Multi-Device Support**: Control multiple Portenta devices
+   - **Custom Scripts**: Automate command sequences
+   - **LED Status Indicators**: Add visual feedback
+
+## Documentation
+
+- **[Quick Start Guide](docs/QUICKSTART.md)** - Get running in 10 minutes
+- **[CLI Reference](docs/CLI_REFERENCE.md)** - Complete command documentation
+- **[Portenta H7 Setup](firmware/portenta/README.md)** - Hardware-specific guide
+- **[ESP32 Draft](firmware/esp32/README.md)** - Untested alternative firmware
+- **[Flipper Zero](firmware/flipper/README.md)** - Manual Bad USB scripts
+
 ## Future Features
 
 - UID code transmission (separate feature branch)
 - WebSocket alternative to MQTT
 - Encrypted communication
 - Multi-device support
+- RTOS threading optimization
+- Battery power management

@@ -2,6 +2,33 @@
 
 This firmware turns an Arduino Portenta H7 into a WiFi-enabled USB HID keyboard.
 
+## Quick Start - First Time Users
+
+**New to this project? Follow these steps:**
+
+1. **Prerequisites**
+   - Arduino Portenta H7 board
+   - USB-C cable (data transfer capable)
+   - WiFi network credentials
+   - Arduino IDE installed
+
+2. **First-Time Setup** (5 minutes)
+   - Install Arduino IDE and Portenta board support (see below)
+   - Open `portenta_h7_hid_keyboard.ino` in this directory
+   - Edit `config.h` with your WiFi SSID and password
+   - Upload to Portenta M7 core
+   - Connect to target computer
+   - Test with CLI commands
+
+3. **Expected Result**
+   - Portenta connects to WiFi automatically
+   - Acts as USB keyboard to target computer
+   - Receives commands from CLI over internet via MQTT
+
+**Continue reading for detailed instructions below.**
+
+---
+
 ## Hardware Requirements
 
 - **Arduino Portenta H7** (any variant)
@@ -204,11 +231,64 @@ For battery-powered deployments, consider:
 
 ## Next Steps
 
-- Test with your target computer
-- Configure your own MQTT broker
-- Customize device ID
-- Consider adding LED status indicators
-- Plan for UID transmission feature (future branch)
+### Immediate Actions
+
+1. **Verify Everything Works**
+   - Open Serial Monitor (115200 baud) and check for successful WiFi/MQTT connection
+   - Connect Portenta to target computer via USB-C
+   - Run test commands from CLI: `npm start -- type "test"`
+   - Verify text appears on target computer
+
+2. **Test All Command Types**
+   ```bash
+   # From CLI computer
+   npm start -- type "Hello World"
+   npm start -- key ENTER
+   npm start -- combo "CTRL+ALT+DELETE"
+   npm start -- status
+   ```
+
+### Production Deployment
+
+3. **Set Up Your Own MQTT Broker**
+   - Public brokers are unreliable for production
+   - Run local broker: `docker run -d -p 1883:1883 eclipse-mosquitto`
+   - Update `config.h` with broker IP address
+
+4. **Secure Your Setup**
+   - Change default `DEVICE_ID` to something unique
+   - Implement MQTT authentication (username/password)
+   - Configure TLS/SSL for encrypted communication
+   - Isolate HID devices on separate network/VLAN
+
+5. **Optimize for Your Use Case**
+   - Adjust `STATUS_REPORT_INTERVAL` if needed
+   - Add LED status indicators (use Portenta's RGB LEDs)
+   - Implement command queuing for complex sequences
+   - Consider using M4 core for additional tasks
+
+### Future Development
+
+6. **UID Code Transmission Feature** (Future Branch)
+   - Plan RFID/NFC hardware integration
+   - Use Portenta GPIO to control NFC modules
+   - Or integrate with Flipper Zero for NFC emulation
+   - Create separate branch for UID feature development
+
+7. **Advanced Features**
+   - Implement RTOS threading for better performance
+   - Add WebSocket support as MQTT alternative
+   - Create command scripting system
+   - Build web dashboard for device management
+
+### Troubleshooting Resources
+
+If you encounter issues:
+- Check Serial Monitor output for error messages
+- Verify WiFi RSSI is adequate (> -70 dBm)
+- Test MQTT broker connectivity separately
+- Review this README's Troubleshooting section above
+- Check GitHub issues for known problems
 
 ## Comparison: Portenta H7 vs ESP32
 
